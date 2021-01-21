@@ -28,7 +28,7 @@
  *  Model WXKG11LM (new revision):
  *    - Single-click results in "button 1 pushed" event
  *    - Hold for longer than 400ms results in "button 1 held" event
- *    - Double-click results in "button 2 pushed" event
+ *    - Double-click results in "button 2 double" event
  *    - Release after a hold results in "button 3 pushed" event
  *    - Single or double-click results in custom "lastPressedCoRE" event for webCoRE use
  *    - Hold results in custom "lastHeldCoRE" event for webCoRE use
@@ -36,7 +36,7 @@
  *  Model WXKG12LM:
  *    - Single-click results in "button 1 pushed" event
  *    - Hold for longer than 400ms results in "button 1 held" event
- *    - Double-click results in "button 2 pushed" event
+ *    - Double-click results in "button 2 double" event
  *    - Shaking the button results in "button 3 pushed" event
  *    - Release after a hold results in "button 4 pushed" event
  *    - Single/double-click or shake results in custom "lastPressedCoRE" event for webCoRE use
@@ -183,6 +183,9 @@ def parse(String description) {
 	}
 	if (result != [:]) {
 		displayDebugLog(": Creating event $result")
+        displayDebugLog("---------")
+        displayDebugLog("---------")
+        displayDebugLog("---------")
 		return createEvent(result)
 	} else
 		return [:]
@@ -255,13 +258,18 @@ private mapButtonEvent(value) {
 	// WXKG11LM (new revision) message values: 0: hold, 1 = push, 2 = double-click, 255 = release
 	// WXKG12LM message values: 1 = push, 2 = double-click, 16 = hold, 17 = release, 18 = shaken
 	def messageType = [0: "held", 1: "single-clicked", 2: "double-clicked", 16: "held", 17: "released", 18: "shaken", 255: "released"]
-	def eventType = [0: "held", 1: "pushed", 2: "pushed", 16: "held", 17: "pushed", 18: "pushed", 255: "pushed"]
-	def buttonNum = [0: 1, 1: 1, 2: 2, 16: 1, 17: 4, 18: 3, 255: 3]
+	def eventType = [0: "held", 1: "pushed", 2: "double", 16: "held", 17: "released", 18: "shaken", 255: "released"]
+	def buttonNum = [0: 1, 1: 1, 2: 2, 16: 1, 17: 4, 18: 3, 255: 4]
 	if (value == 17 || value == 255) {
-		updateLastPressed("Released")
+		//updateLastPressed("Released")
+        return [:]
 	} else if (value == 0 || value == 16) {
 		updateLastPressed("Held")
-	} else if (value <= 18) {
+	} else if (value == 2) {
+    	updateLastPressed("Double pressed")
+        if(eventType[value] == "double")
+        	runIn(1, clearButtonStatus)
+    } else if (value == 1) {
 		updateLastPressed("Pressed")
 		if (eventType[value] == "pushed")
 			runIn(1, clearButtonStatus)
@@ -271,7 +279,7 @@ private mapButtonEvent(value) {
 	}
 	def descText = " was ${messageType[value]} (Button ${buttonNum[value]} ${eventType[value]})"
 	displayInfoLog(descText)
-	sendEvent(name: "buttonStatus", value: messageType[value], isStateChange: true, displayed: false)
+	sendEvent(name: "buttonStatus", value: messageType[value], isStateChange: true, displayed: true) //was set to displayed false
 	return [
 		name: 'button',
 		value: eventType[value],
